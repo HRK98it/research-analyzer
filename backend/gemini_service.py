@@ -134,13 +134,19 @@ Return this exact JSON format:
                     publication = "AAAI"
 
             # YEAR FALLBACK (if Gemini fails)
+            # YEAR FALLBACK
             year = str(result.get("year")) if result.get("year") else None
             if not year:
+              # Check copyright
                 year_match = re.search(r"©\s*(20\d{2}|19\d{2})", text)
-                if not year_match:
-                    year_match = re.search(r"\b(20\d{2}|19\d{2})\b", text)
-                if year_match:
-                    year = year_match.group(1)
+            if not year_match:
+              # Check author citation pattern like "Author (2019)"
+                year_match = re.search(r"\(\s*(20\d{2}|19\d{2})\s*\)", text)
+            if not year_match:
+          # Any 4 digit year
+                year_match = re.search(r"\b(20\d{2}|19\d{2})\b", text)
+            if year_match:
+                year = year_match.group(1)
 
             return {
                 "title": result.get("title"),
