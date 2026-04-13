@@ -1,16 +1,16 @@
 import axios from "axios";
 
-const API_BASE = "http://127.0.0.1:8000"; // 🔥 FIXED
+const BACKEND_URL = "https://research-analyzer-backend-tkes.onrender.com";
 
 const API = axios.create({
-  baseURL: API_BASE,
+  baseURL: BACKEND_URL,
   timeout: 60000,
 });
 
 export interface Paper {
   id: number;
   title: string | null;
-  publication: string | null; // 🔥 ADD (important)
+  publication: string | null;
   authors: string | null;
   year: string | null;
   model_used: string | null;
@@ -26,29 +26,13 @@ export interface FilterParams {
   dataset?: string;
 }
 
-export async function uploadPaper(file: File) {
-  const formData = new FormData();
-  formData.append("file", file);
-
-  console.log("📡 CALLING API...");
-
-  const res = await fetch(`${API_BASE}/upload`, {
-    method: "POST",
-    body: formData,
+export async function uploadPaper(file: File): Promise<Paper> {
+  const form = new FormData();
+  form.append("file", file);
+  const res = await API.post<Paper>("/upload", form, {
+    headers: { "Content-Type": "multipart/form-data" },
   });
-
-  console.log("📡 STATUS:", res.status);
-
-  if (!res.ok) {
-    const text = await res.text();
-    console.error("❌ ERROR:", text);
-    throw new Error(text || "Upload failed");
-  }
-
-  const data = await res.json();
-  console.log("✅ DATA:", data);
-
-  return data;
+  return res.data;
 }
 
 export async function getPapers(filters: FilterParams = {}): Promise<Paper[]> {
@@ -56,7 +40,6 @@ export async function getPapers(filters: FilterParams = {}): Promise<Paper[]> {
   if (filters.year) params.year = filters.year;
   if (filters.model_used) params.model_used = filters.model_used;
   if (filters.dataset) params.dataset = filters.dataset;
-
   const res = await API.get<Paper[]>("/papers", { params });
   return res.data;
 }
@@ -70,7 +53,6 @@ export function getDownloadUrl(filters: FilterParams = {}): string {
   if (filters.year) params.set("year", filters.year);
   if (filters.model_used) params.set("model_used", filters.model_used);
   if (filters.dataset) params.set("dataset", filters.dataset);
-
   const query = params.toString();
-  return `${API_BASE}/papers/download/pdf${query ? "?" + query : ""}`;
+  return `${BACKEND_URL}/papers/download/pdf${query ? "?" + query : ""}`;
 }
