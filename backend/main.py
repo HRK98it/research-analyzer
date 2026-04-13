@@ -22,12 +22,14 @@ app = FastAPI(title="Research Paper Analyzer API", version="1.0.0")
 # CORS — allow frontend origin
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:3000",
+        "https://research-analyzer-one.vercel.app",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 
 @app.on_event("startup")
 def startup_event():
