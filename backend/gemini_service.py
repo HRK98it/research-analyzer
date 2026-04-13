@@ -18,28 +18,68 @@ def analyze_paper(text: str) -> dict:
     model = genai.GenerativeModel(MODEL_NAME)
 
     prompt = f"""
-You are a research paper metadata extractor. Be aggressive and precise.
+You are an expert research paper metadata extractor. Your job is to find information even when it's not explicitly stated.
 
-Extract these fields:
+Extract these fields from the research paper text:
 
-- title: The full title of the paper
-- publication: Identify source like IEEE, Springer, arXiv, ACM, Elsevier, MDPI (NOT just hosting like ResearchGate unless no other found)
-- authors: Comma-separated list of author names  
-- year: Publication year (4-digit number)
-- model_used: Extract ONLY the primary or best-performing model
-- accuracy: Extract the performance metric specifically for that model (accuracy, F1, precision, recall, AUC)
-- dataset: Dataset name used
+1. title: Full paper title. Look at the very beginning of the text.
 
-Rules:
-- Search entire text (abstract, methodology, results, conclusion)
-- Prefer official publishers over hosting sites
-- If not found return null
-- Return ONLY valid JSON
+2. publication: Journal/conference name. Look for:
+   - IEEE, Springer, Elsevier, ACM, MDPI, arXiv, Nature, Wiley
+   - Conference names like CVPR, NeurIPS, ICML, AAAI, ICCV
+   - Journal names in header/footer
+   - DOI prefix can hint at publisher
+
+3. authors: All author names comma separated. Usually right after title.
+
+4. year: 4-digit publication year. Look in:
+   - Copyright notice like "© 2023"
+   - "Received", "Accepted", "Published" dates
+   - Conference year in title or header
+   - DOI or URL containing year
+
+5. model_used: Primary ML/AI model or algorithm. Look for:
+   - Deep learning: CNN, RNN, LSTM, GRU, Transformer, BERT, GPT, ResNet, VGG, YOLO
+   - Classical ML: SVM, Random Forest, Naive Bayes, KNN, Decision Tree, XGBoost, Logistic Regression
+   - Custom model names the authors propose
+   - Look in: abstract, methodology, proposed system, experiments sections
+   - If multiple models compared, pick the one with BEST performance
+
+6. accuracy: Best performance metric. Look for:
+   - Accuracy %, F1-score, Precision, Recall, AUC-ROC, BLEU, mAP
+   - Look in: results, evaluation, experiments, conclusion sections
+   - Tables with numbers (extract the best/highest value)
+   - Phrases like "achieved", "obtained", "proposed method", "our model"
+   - Format example: "98.2% accuracy" or "F1: 0.94"
+
+7. dataset: Dataset name used. Look for:
+   - Known datasets: MNIST, CIFAR, ImageNet, COCO, SQuAD, GLUE, IMDb
+   - Fake news: LIAR, FakeNewsNet, BuzzFeed, ISOT, FA-KES
+   - Custom datasets: "we collected", "we created", "our dataset"
+   - Look in: dataset section, experiments, methodology
+
+IMPORTANT RULES:
+- Search the ENTIRE text very carefully
+- For accuracy: even if you see "93%" anywhere near results, extract it
+- For model: even if only mentioned once in methodology, extract it
+- For year: if you see any date, extract the year from it
+- For dataset: if you see any data source mentioned, extract it
+- Only return null if the information is truly completely absent
+- Return ONLY valid JSON, no markdown, no explanation
 
 Paper text:
 {text}
 
-Return JSON:
+Return this exact JSON format:
+{{
+  "title": "...",
+  "publication": "...",
+  "authors": "...",
+  "year": "...",
+  "model_used": "...",
+  "accuracy": "...",
+  "dataset": "..."
+}}
 """
 
     max_retries = 3
@@ -55,12 +95,12 @@ Return JSON:
 
             result = json.loads(raw)
 
-            # 🔥 MODEL CLEANUP (take first if multiple)
+            # MODEL CLEANUP (take first if multiple)
             model_used = result.get("model_used")
             if model_used:
                 model_used = model_used.split(",")[0].strip()
 
-            # 🔥 PUBLICATION FALLBACK (if Gemini fails)
+            # PUBLICATION FALLBACK (if Gemini fails)
             publication = result.get("publication")
             if not publication:
                 text_lower = text.lower()
@@ -78,12 +118,35 @@ Return JSON:
                     publication = "MDPI"
                 elif "researchgate" in text_lower:
                     publication = "ResearchGate"
+                elif "wiley" in text_lower:
+                    publication = "Wiley"
+                elif "nature" in text_lower:
+                    publication = "Nature"
+                elif "neurips" in text_lower or "nips" in text_lower:
+                    publication = "NeurIPS"
+                elif "cvpr" in text_lower:
+                    publication = "CVPR"
+                elif "iccv" in text_lower:
+                    publication = "ICCV"
+                elif "icml" in text_lower:
+                    publication = "ICML"
+                elif "aaai" in text_lower:
+                    publication = "AAAI"
+
+            # YEAR FALLBACK (if Gemini fails)
+            year = str(result.get("year")) if result.get("year") else None
+            if not year:
+                year_match = re.search(r"©\s*(20\d{2}|19\d{2})", text)
+                if not year_match:
+                    year_match = re.search(r"\b(20\d{2}|19\d{2})\b", text)
+                if year_match:
+                    year = year_match.group(1)
 
             return {
                 "title": result.get("title"),
                 "publication": publication,
                 "authors": result.get("authors"),
-                "year": str(result.get("year")) if result.get("year") else None,
+                "year": year,
                 "model_used": model_used,
                 "accuracy": result.get("accuracy"),
                 "dataset": result.get("dataset"),
