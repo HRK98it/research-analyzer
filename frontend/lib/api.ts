@@ -4,7 +4,7 @@ const BACKEND_URL = "https://research-analyzer.onrender.com";
 
 const API = axios.create({
   baseURL: BACKEND_URL,
-  timeout: 120000,
+  timeout: 240000,
 });
 
 export interface Paper {
