@@ -1,10 +1,10 @@
 import axios from "axios";
 
-const BACKEND_URL = "https://research-analyzer-backend-tkes.onrender.com";
+const BACKEND_URL = "https://research-analyzer.onrender.com";
 
 const API = axios.create({
   baseURL: BACKEND_URL,
-  timeout: 60000,
+  timeout: 120000,
 });
 
 export interface Paper {
