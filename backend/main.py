@@ -22,8 +22,8 @@ app = FastAPI(title="Research Paper Analyzer API", version="1.0.0")
 # CORS — allow frontend origin
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
+    allow_origins=["https://research-analyzer.onrender.com"],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
